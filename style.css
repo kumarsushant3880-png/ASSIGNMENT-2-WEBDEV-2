@@ -55,7 +55,7 @@ button {
 
 button:hover {
     transform: scale(1.08);
-    box-shadow: 0 5px 15px rgba(255,154,60,0.5);
+    box-shadow: 0 5px 15px rgba(255, 123, 0, 0.5);
 }
 
 /* WEATHER BOX */
@@ -71,7 +71,7 @@ button:hover {
 
 /* HISTORY BUTTONS */
 .history button {
-    background: rgba(255,255,255,0.25);
+    background: rgba(255, 255, 255, 0.25);
     margin: 5px;
     border-radius: 20px;
     padding: 6px 14px;
