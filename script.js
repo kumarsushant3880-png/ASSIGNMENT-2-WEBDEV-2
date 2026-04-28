@@ -1,106 +1,131 @@
-const API_KEY = "41ed6b7624799978723a75d0e18a70d4";
-//    const API_KEY = "41ed6b7624799978723a75d0e18a70d4";
+const API_KEY = "34e0d95d2fae3748a18202d2750ea200"; // Replace with a valid OpenWeatherMap API key.
 
+const cityInput = document.getElementById("cityInput");
 const weatherBox = document.getElementById("weather");
 const historyBox = document.getElementById("history");
+const searchBtn = document.getElementById("searchBtn");
+const locationBtn = document.getElementById("locationBtn");
 
-/* ---------- WEATHER FETCH ---------- */
-async function getWeather(city) {
+async function fetchWeather(url) {
+    const res = await fetch(url);
+    const data = await res.json();
 
-    // small delay for smoother UI
-    // await new Promise(r => setTimeout(r, 500));
-    {
-        const res = await fetch(
-            `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
-        );
-        if (!res.ok) {
-            alert("city not found");
-            throw new Error("City not found");
+    if (!res.ok) {
+        if (data.cod === 401 || data.cod === "401") {
+            throw new Error("Invalid API key. Please replace API_KEY with a valid OpenWeatherMap key.");
         }
-        const data = await res.json();
-        return data;
+
+        if (data.cod === "404") {
+            throw new Error("City not found. Please check the spelling and try again.");
+        }
+
+        throw new Error(data.message || "Unable to fetch weather right now.");
     }
+
+    return data;
 }
 
-/* ---------- BUTTON CLICK ---------- */
-document.getElementById("searchBtn").onclick = () => {
-    const city = cityInput.value.trim();
-    if (city) {
-        search(city);
-    }
-};
+async function getWeather(city) {
+    const cityName = encodeURIComponent(city);
+    return fetchWeather(
+        `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${API_KEY}&units=metric`
+    );
+}
 
-/* ---------- UI RENDER ---------- */
+async function getWeatherByCoords(latitude, longitude) {
+    return fetchWeather(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric`
+    );
+}
+
 function renderWeather(d) {
     weatherBox.innerHTML = `
         <div class="weather-item"><label>City</label><span>${d.name}, ${d.sys.country}</span></div>
-        <div class="weather-item"><label>Temperature</label><span>${d.main.temp} °C</span></div>
+        <div class="weather-item"><label>Temperature</label><span>${d.main.temp} deg C</span></div>
         <div class="weather-item"><label>Weather</label><span>${d.weather[0].main}</span></div>
         <div class="weather-item"><label>Humidity</label><span>${d.main.humidity}%</span></div>
         <div class="weather-item"><label>Wind Speed</label><span>${d.wind.speed} m/s</span></div>
     `;
 }
 
-/* ---------- SAVE SEARCH HISTORY ---------- */
 function saveHistory(city) {
-    // get existing history OR empty array
     let history = JSON.parse(localStorage.getItem("weatherHistory")) || [];
 
-    // remove duplicate if exists
     history = history.filter(c => c.toLowerCase() !== city.toLowerCase());
-
-    // add new city at beginning
     history.unshift(city);
+    history = history.slice(0, 8);
 
-    // save back to localStorage
     localStorage.setItem("weatherHistory", JSON.stringify(history));
-
-    // update UI
     showHistory();
 }
 
-/* ---------- SHOW HISTORY ---------- */
 function showHistory() {
-    // get history
     const history = JSON.parse(localStorage.getItem("weatherHistory")) || [];
-
-    // clear previous UI
     historyBox.innerHTML = "";
 
-    // display each city
     history.forEach(city => {
         const btn = document.createElement("button");
         btn.textContent = city;
-
-        // click again to search same city
-        btn.onclick = () => {
-            search(city);
-        };
-
+        btn.onclick = () => search(city);
         historyBox.appendChild(btn);
     });
 }
 
-/* ---------- SEARCH FUNCTION ---------- */
 async function search(city) {
-    weatherBox.innerHTML = "";
+    weatherBox.innerHTML = "<p>Loading weather...</p>";
+
     try {
         const data = await getWeather(city);
         renderWeather(data);
         saveHistory(data.name);
     } catch (error) {
-        weatherBox.innerHTML = `<p style="color:red">${error.message}</p>`;
+        weatherBox.innerHTML = `<p style="color:#ffb4a8">${error.message}</p>`;
     }
 }
 
-/* ---------- ENTER KEY SEARCH ---------- */
-cityInput.addEventListener("keydown", (e) => {
+function searchCurrentLocation() {
+    if (!navigator.geolocation) {
+        weatherBox.innerHTML = `<p style="color:#ffb4a8">Geolocation is not supported by this browser.</p>`;
+        return;
+    }
+
+    weatherBox.innerHTML = "<p>Finding your location...</p>";
+
+    navigator.geolocation.getCurrentPosition(
+        async position => {
+            try {
+                const { latitude, longitude } = position.coords;
+                const data = await getWeatherByCoords(latitude, longitude);
+                renderWeather(data);
+                saveHistory(data.name);
+            } catch (error) {
+                weatherBox.innerHTML = `<p style="color:#ffb4a8">${error.message}</p>`;
+            }
+        },
+        () => {
+            weatherBox.innerHTML = `<p style="color:#ffb4a8">Location permission was denied.</p>`;
+        }
+    );
+}
+
+searchBtn.onclick = () => {
+    const city = cityInput.value.trim();
+
+    if (city) {
+        search(city);
+    }
+};
+
+locationBtn.onclick = searchCurrentLocation;
+
+cityInput.addEventListener("keydown", e => {
     if (e.key === "Enter") {
         const city = cityInput.value.trim();
+
         if (city) {
             search(city);
         }
     }
 });
-/* ---------- INITIAL LOAD ---------- */
+
 showHistory();

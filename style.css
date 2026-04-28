@@ -14,6 +14,13 @@ h1 {
 }
 
 /* CARDS */
+.parent-card {
+    display: flex;
+    gap: 20px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
 .card {
     background: rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(15px);
